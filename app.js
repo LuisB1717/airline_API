@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-
+const mysql = require("./src/shared/mysql");
 const PORT = 3000;
 
 app.use(express.json());
