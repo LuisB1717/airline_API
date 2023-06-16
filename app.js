@@ -1,5 +1,7 @@
 import express from "express";
-import { airNova } from "./src/flight/airplane.js";
+import { airMax, airNova } from "./src/flight/airplane.js";
+import { getPurchaseByFlight } from "./src/flight/purchase.js";
+import { getBusySeatsByFlight } from "./src/flight/seats.js";
 import { doQuery } from "./src/shared/mysql.js";
 
 const PORT = 3000;
@@ -28,16 +30,32 @@ app.get("/flights/:id/passengers", async (req, res) => {
   const flightId = req.params.id
   const flight = await doQuery(`SELECT airplane_id from flight where flight_id = ${flightId}`)
   const airplaneId = flight[0].airplane_id
-
+  const airplane = airplaneId === 1 ? airNova : airMax
+  
   const seats = await doQuery(`SELECT * FROM seat where airplane_id = ${airplaneId}`)
-
+  const busySeats = await getBusySeatsByFlight(flightId)
+  
   for (const seat of seats) {
     const column = toNumber(seat.seat_column)
-    airNova[seat.seat_row - 1][column] = {
+    const boardingPass = busySeats.find(element => element.seat_id == seat.seat_id)
+    const data = boardingPass ? {
+      passengerId: boardingPass.passenger_id,
+      dni: boardingPass.dni,
+      name: boardingPass.name,
+      age: boardingPass.age,
+      country: boardingPass.country,
+      boardingPassId: boardingPass.boarding_pass_id,
+      purcharseId: boardingPass.purcharse_id
+    } : {};
+    
+    airplane[seat.seat_row - 1][column] = {
+      ...data,
       seatId: seat.seat_id,
       seatTypeId: seat.seat_type_id,
     }
   }
+  
+  const purchase = await getPurchaseByFlight(flightId)
 
-  res.send(airNova);
+  res.send(airplane);
 });
