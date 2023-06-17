@@ -31,7 +31,7 @@ try {
   const flightId = req.params.id
   const flight = await getFlightById(flightId)
   if (!flight[0]) {
-    res.status(404).send({code: 404, data: {} });
+   return res.status(404).send({code: 404, data: {} });
   }
   const airplaneId = flight[0].airplane_id
   const seats = await getSeatsByAirplane(airplaneId)
@@ -63,7 +63,7 @@ try {
   const passengers = [];
   airplane.forEach(row => passengers.push(...row));
 
-  res.send({
+  return res.send({
     code: 200,
     data: {
       flightId: parseInt(flightId),
@@ -76,7 +76,7 @@ try {
     },
   });
 } catch (error) {
-  res.status(400).send({code: 400, errors: error.message});
+  return res.status(400).send({code: 400, errors: error.message});
 }
 });
 
