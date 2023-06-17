@@ -24,11 +24,11 @@ export async function getPurchaseByFlight(flightId){
 
     return purchases.sort((a, b) => {
 
-        if (a.seat_type_id < b.seat_type_id ) {
+        if (a.seat_type_id > b.seat_type_id ) {
             return -1;
         }
 
-        if (a.seat_type_id > b.seat_type_id ) {
+        if (a.seat_type_id < b.seat_type_id ) {
             return 1;
         }
 

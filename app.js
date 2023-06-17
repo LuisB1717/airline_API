@@ -1,8 +1,8 @@
 import express from "express";
-import { airMax, airNova } from "./src/flight/airplane.js";
-import { getPurchaseByFlight } from "./src/flight/purchase.js";
-import { getBusySeatsByFlight } from "./src/flight/seats.js";
-import { doQuery } from "./src/shared/mysql.js";
+import { airMax, airNova } from "./src/core/airplane.js";
+import { getFlightById } from "./src/core/flight.js";
+import { getPurchaseByFlight } from "./src/core/purchase.js";
+import { getBusySeatsByFlight, getSeatsByAirplane } from "./src/core/seats.js";
 
 const PORT = 3000;
 const app = express();
@@ -28,53 +28,31 @@ function toNumber(letter) {
 
 app.get("/flights/:id/passengers", async (req, res) => {
   const flightId = req.params.id
-  const flight = await doQuery(`SELECT airplane_id from flight where flight_id = ${flightId}`)
+  const flight = await getFlightById(flightId)
   const airplaneId = flight[0].airplane_id
+  const seats = await getSeatsByAirplane(airplaneId)
   const airplane = airplaneId === 1 ? airNova : airMax
   
-  const seats = await doQuery(`SELECT * FROM seat where airplane_id = ${airplaneId}`)
   const busySeats = await getBusySeatsByFlight(flightId)
   
   for (const seat of seats) {
     const column = toNumber(seat.seat_column)
     const boardingPass = busySeats.find(element => element.seat_id == seat.seat_id)
-    const data = boardingPass ? {
-      passengerId: boardingPass.passenger_id,
-      dni: boardingPass.dni,
-      name: boardingPass.name,
-      age: boardingPass.age,
-      country: boardingPass.country,
-      boardingPassId: boardingPass.boarding_pass_id,
-      purcharseId: boardingPass.purcharse_id
-    } : {};
     
-    airplane[seat.seat_row - 1][column] = {
-      ...data,
-      seatId: seat.seat_id,
-      seatTypeId: seat.seat_type_id,
-    }
+    airplane[seat.seat_row - 1][column] = parseBoardingPass({}, boardingPass, seat)
   }
-  
+
   const passes = [];
   const purchases = await getPurchaseByFlight(flightId);
 
   purchases.forEach(purchase => passes.push(...purchase.items));
 
-  for (let i = 0; i < airplane.length; i++) {
-    for (let j = 0; j < airplane[i].length; j++) {
+  for (let i = airplane.length - 1; i > 0 ; i--) {
+    for (let j = airplane[i].length - 1; j > 0; j--) {
       const seat = airplane[i][j]
       if (seat === null || !!seat.boardingPassId) continue;
       const boardingPass = passes.shift() || {};
-      airplane[i][j] = {
-        ...seat,
-        passengerId: boardingPass.passenger_id,
-        dni: boardingPass.dni,
-        name: boardingPass.name,
-        age: boardingPass.age,
-        country: boardingPass.country,
-        boardingPassId: boardingPass.boarding_pass_id,
-        purcharseId: boardingPass.purcharse_id,
-      }
+      airplane[i][j] = parseBoardingPass(seat, boardingPass);
     }
   }
 
@@ -85,7 +63,33 @@ app.get("/flights/:id/passengers", async (req, res) => {
     code: 200,
     data: {
       flightId: parseInt(flightId),
+      takeoffDateTime: flight[0].takeoff_date_time,
+      takeoffAirport: flight[0].takeoff_airport,
+      landingDateTime: flight[0].landing_date_time,
+      landingAirport: flight[0].landing_airport,
+      airplaneId: flight[0].airplane_id,
       passengers: passengers.filter(element => element !== null),
     },
   });
 });
+
+function parseBoardingPass(initialValue, boardingPass, seat) {
+  const data = initialValue
+
+  if (seat) {
+    data.seatId = seat.seat_id;
+    data.seatTypeId = seat.seat_type_id;
+  }
+
+  if (boardingPass) {
+    data.passengerId = boardingPass.passenger_id;
+    data.dni = boardingPass.dni;
+    data.name = boardingPass.name;
+    data.age = boardingPass.age;
+    data.country = boardingPass.country;
+    data.boardingPassId = boardingPass.boarding_pass_id;
+    data.purcharseId = boardingPass.purcharse_id;
+  }
+
+  return data;
+}
