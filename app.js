@@ -4,7 +4,7 @@ import { getFlightById } from "./src/core/flight.js";
 import { getPurchaseByFlight } from "./src/core/purchase.js";
 import { getBusySeatsByFlight, getSeatsByAirplane } from "./src/core/seats.js";
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const app = express();
 
 app.use(express.json());
