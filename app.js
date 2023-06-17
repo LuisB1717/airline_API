@@ -55,7 +55,37 @@ app.get("/flights/:id/passengers", async (req, res) => {
     }
   }
   
-  const purchase = await getPurchaseByFlight(flightId)
+  const passes = [];
+  const purchases = await getPurchaseByFlight(flightId);
 
-  res.send(airplane);
+  purchases.forEach(purchase => passes.push(...purchase.items));
+
+  for (let i = 0; i < airplane.length; i++) {
+    for (let j = 0; j < airplane[i].length; j++) {
+      const seat = airplane[i][j]
+      if (seat === null || !!seat.boardingPassId) continue;
+      const boardingPass = passes.shift() || {};
+      airplane[i][j] = {
+        ...seat,
+        passengerId: boardingPass.passenger_id,
+        dni: boardingPass.dni,
+        name: boardingPass.name,
+        age: boardingPass.age,
+        country: boardingPass.country,
+        boardingPassId: boardingPass.boarding_pass_id,
+        purcharseId: boardingPass.purcharse_id,
+      }
+    }
+  }
+
+  const passengers = [];
+  airplane.forEach(row => passengers.push(...row));
+
+  res.send({
+    code: 200,
+    data: {
+      flightId: parseInt(flightId),
+      passengers: passengers.filter(element => element !== null),
+    },
+  });
 });
