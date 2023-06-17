@@ -10,7 +10,7 @@ const app = express();
 app.use(express.json());
 app.listen(PORT, () => console.log("Server started on port " + PORT));
 
-app.get("/", async (req, res) => {});
+app.get("/", (req,res) => res.send("Hola, bienvenido a la API"));
 
 function toNumber(letter) {
   switch (letter) {
@@ -27,8 +27,12 @@ function toNumber(letter) {
 }
 
 app.get("/flights/:id/passengers", async (req, res) => {
+try {
   const flightId = req.params.id
   const flight = await getFlightById(flightId)
+  if (!flight[0]) {
+    res.status(404).send({code: 404, data: {} });
+  }
   const airplaneId = flight[0].airplane_id
   const seats = await getSeatsByAirplane(airplaneId)
   const airplane = airplaneId === 1 ? airNova : airMax
@@ -71,6 +75,9 @@ app.get("/flights/:id/passengers", async (req, res) => {
       passengers: passengers.filter(element => element !== null),
     },
   });
+} catch (error) {
+  res.status(400).send({code: 400, errors: error.message});
+}
 });
 
 function parseBoardingPass(initialValue, boardingPass, seat) {
